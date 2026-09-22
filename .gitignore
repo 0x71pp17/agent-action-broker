@@ -1,0 +1,12 @@
+# Binaries
+/agent-action-broker
+*.exe
+*.out
+# Test and coverage artifacts
+*.test
+coverage.out
+coverage.html
+# Editor and OS
+.idea/
+.vscode/
+.DS_Store
