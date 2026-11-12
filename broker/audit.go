@@ -17,6 +17,11 @@ type AuditRecord struct {
 	Sink       Sink      `json:"sink"`
 	Allowed    bool      `json:"allowed"`
 	Violations []string  `json:"violations,omitempty"`
+	Dest       string    `json:"dest,omitempty"`
+	Credential string    `json:"credential,omitempty"`   // credential id
+	OnBehalfOf string    `json:"on_behalf_of,omitempty"` // delegating user
+	Scopes     []string  `json:"scopes,omitempty"`       // scopes the credential carried
+	Verified   bool      `json:"verified"`               // the agent identity was authenticated
 }
 
 // AuditSink receives one record per decision. An implementation used with a
@@ -35,14 +40,20 @@ func DecideAudited(req Request, p Policy, sink AuditSink) (Verdict, error) {
 	if sink == nil {
 		return v, nil
 	}
-	return v, sink.Record(AuditRecord{
+	rec := AuditRecord{
 		Time:       time.Now().UTC(),
 		Agent:      req.Agent,
 		Tool:       req.Tool,
 		Sink:       p.Tools[req.Tool],
 		Allowed:    v.Allowed,
 		Violations: v.Violations,
-	})
+		Dest:       req.Dest,
+	}
+	if c := req.Credential; c != nil && p.Identity != nil {
+		rec.Credential, rec.OnBehalfOf, rec.Scopes = c.ID, c.OnBehalfOf, c.Scopes
+		rec.Verified = !contains(v.Violations, ViolationCredential)
+	}
+	return v, sink.Record(rec)
 }
 
 // JSONLSink writes one JSON object per line to an io.Writer, an append-only

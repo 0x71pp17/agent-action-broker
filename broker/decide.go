@@ -16,6 +16,12 @@ import "fmt"
 //
 // The first failing check decides the call; a denial always carries a Downgrade.
 func Decide(req Request, p Policy) Verdict {
+	if p.Identity != nil {
+		if v, ok := checkCredential(req, p.Identity); !ok {
+			return v
+		}
+	}
+
 	sink, known := p.Tools[req.Tool]
 	if !known || sink == SinkUnknown {
 		return Verdict{
@@ -30,6 +36,12 @@ func Decide(req Request, p Policy) Verdict {
 			Reason:     fmt.Sprintf("agent %q is not granted %q", req.Agent, req.Tool),
 			Downgrade:  fmt.Sprintf("grant %q to agent %q as a scoped capability, or route the call to an agent that already holds it", req.Tool, req.Agent),
 			Violations: []string{ViolationCapability},
+		}
+	}
+
+	if p.Identity != nil {
+		if v, ok := checkScope(req, p.Identity); !ok {
+			return v
 		}
 	}
 
