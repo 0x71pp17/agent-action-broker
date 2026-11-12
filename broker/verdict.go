@@ -9,7 +9,10 @@
 // incident can be pinned as a test rather than reproduced against live tools.
 package broker
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 // Sink is a class of consequential operation a tool performs. A tool with no
 // consequential effect is SinkBenign; a tool the policy has never classified is
@@ -42,6 +45,9 @@ type Request struct {
 	Tool      string  // the tool name being invoked
 	ArgTaints []Taint // provenance of each argument feeding the call
 	Dest      string  // egress destination for net.out sinks; empty otherwise
+	// Credential and Now are read only when the policy sets Identity.
+	Credential *Credential // the scoped credential presented with the call
+	Now        time.Time   // decision time, supplied by the caller
 }
 
 // Policy is the standing configuration a decision is made against. Every map
@@ -58,6 +64,9 @@ type Policy struct {
 	// consequential action with no inputs cannot be shown to run on trusted
 	// context. Leaving this empty makes the grant itself the authorization.
 	GuardedSinks []Sink
+	// Identity, when set, requires every call to carry a verified Credential
+	// and narrows the standing grant to the credential's scope.
+	Identity *Identity
 }
 
 // Validate reports policy configuration problems that would otherwise surface
@@ -86,6 +95,9 @@ type Verdict struct {
 
 // Violation ids. Callers switch on these rather than string literals.
 const (
+	ViolationCredential   = "credential"
+	ViolationScope        = "scope"
+	ViolationDelegation   = "delegation"
 	ViolationUnknownTool  = "unknown-tool"
 	ViolationCapability   = "capability"
 	ViolationNoProvenance = "no-provenance"
